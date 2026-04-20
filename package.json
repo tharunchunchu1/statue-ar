@@ -1,0 +1,10 @@
+{
+  "name": "statue-ar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "World-locked AR effects (beam, ghost, flower) anchored to a real-world statue via MindAR image tracking.",
+  "scripts": {
+    "start": "npx --yes http-server -p 8080 -a 0.0.0.0 --cors -c-1 .",
+    "start:python": "python3 -m http.server 8080"
+  }
+}

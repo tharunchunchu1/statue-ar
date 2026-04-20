@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Compile Image Target</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 640px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #0f1115;
+      color: #eee;
+    }
+    h1 { font-size: 22px; margin-bottom: 6px; }
+    p { opacity: 0.8; font-size: 14px; }
+    .card {
+      background: #1a1e26;
+      border: 1px solid #2a2f3a;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    input[type="file"] { margin-bottom: 12px; }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:disabled { background: #555; cursor: not-allowed; }
+    #status {
+      margin-top: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto;
+      background: #0a0c10;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    #preview {
+      max-width: 100%;
+      margin-top: 12px;
+      border-radius: 8px;
+      display: none;
+    }
+    ol { padding-left: 20px; line-height: 1.8; }
+  </style>
+</head>
+<body>
+  <h1>Compile Image Target</h1>
+  <p>Turn <code>statue.jpg</code> (or any reference photo) into a <code>.mind</code> file that MindAR uses for tracking. Runs entirely in your browser.</p>
+
+  <div class="card">
+    <ol>
+      <li>Pick the statue photo (the one in <code>targets/statue.jpg</code>)</li>
+      <li>Click <strong>Compile</strong> and wait ~15&ndash;60 seconds</li>
+      <li>A <code>targets.mind</code> file will download</li>
+      <li>Move it into the <code>targets/</code> folder</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <input type="file" id="file" accept="image/*" />
+    <br/>
+    <button id="compile" disabled>Compile</button>
+    <img id="preview" />
+    <div id="status">Loading MindAR...</div>
+  </div>
+
+  <script type="module">
+    import { Compiler } from 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js';
+
+    const fileInput = document.getElementById('file');
+    const compileBtn = document.getElementById('compile');
+    const status = document.getElementById('status');
+    const preview = document.getElementById('preview');
+    let loadedImage = null;
+
+    const log = (msg) => {
+      status.textContent += '\n' + msg;
+      status.scrollTop = status.scrollHeight;
+    };
+
+    status.textContent = 'Ready. Select an image to begin.';
+
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      status.textContent = `Loaded: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+      const url = URL.createObjectURL(file);
+      preview.src = url;
+      preview.style.display = 'block';
+      loadedImage = await new Promise((res, rej) => {
+        const img = new Image();
+        img.onload = () => res(img);
+        img.onerror = rej;
+        img.src = url;
+      });
+      compileBtn.disabled = false;
+      log(`Image size: ${loadedImage.width} x ${loadedImage.height}`);
+    });
+
+    compileBtn.addEventListener('click', async () => {
+      compileBtn.disabled = true;
+      log('Compiling (this may take up to 60 seconds)...');
+      try {
+        const compiler = new Compiler();
+        const start = performance.now();
+        const dataList = await compiler.compileImageTargets(
+          [loadedImage],
+          (progress) => log(`Progress: ${progress.toFixed(1)}%`)
+        );
+        const totalPoints = dataList[0].trackingData.reduce((s, t) => s + t.points.length, 0);
+        log(`Feature points: ${totalPoints}`);
+        log(`Done in ${((performance.now() - start) / 1000).toFixed(1)}s`);
+        const buffer = await compiler.exportData();
+        const blob = new Blob([buffer]);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'targets.mind';
+        a.click();
+        log('Downloaded targets.mind — move it into the targets/ folder.');
+      } catch (err) {
+        log('Error: ' + err.message);
+        console.error(err);
+      } finally {
+        compileBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

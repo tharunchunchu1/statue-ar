@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Camera Test</title>
+  <style>
+    body { margin: 0; background: #222; color: white; font-family: sans-serif; }
+    video { width: 100vw; height: auto; display: block; }
+    #log { padding: 10px; font-family: monospace; font-size: 12px; background: rgba(0,0,0,0.7); position: fixed; top: 0; left: 0; right: 0; }
+  </style>
+</head>
+<body>
+  <div id="log">Requesting camera...</div>
+  <video id="v" autoplay playsinline muted></video>
+  <script>
+    const log = (msg) => { document.getElementById('log').textContent = msg; console.log(msg); };
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+      .then(stream => {
+        document.getElementById('v').srcObject = stream;
+        const track = stream.getVideoTracks()[0];
+        log(`OK: ${track.label} (${track.getSettings().width}x${track.getSettings().height})`);
+      })
+      .catch(err => log('ERROR: ' + err.name + ' — ' + err.message));
+  </script>
+</body>
+</html>
